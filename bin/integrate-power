@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+ID="${USER:-$(id -un)}.power"
+DEST="$HOME/.config/omarchy/plugins/$ID"
+BACKUP="$HOME/.local/state/cell/backups/integration-$(date +%Y%m%d-%H%M%S)"
+if test -d "$DEST" && ! test -f "$DEST/.cell-integrated"; then
+  printf 'Refusing to overwrite an existing battery customization: %s\n' "$DEST" >&2
+  exit 1
+fi
+mkdir -p "$BACKUP"
+cp -a "$HOME/.config/omarchy/shell.json" "$BACKUP/shell.json"
+if test -d "$DEST"; then cp -a "$DEST" "$BACKUP/power"; else omarchy plugin clone omarchy.power; fi
+mkdir -p "$DEST/plugin/i18n" "$DEST/build"
+for file in BatteryDetails.qml HistoryGraph.qml PlainText.qml Telemetry.qml Model.js; do
+  cp "$ROOT/plugin/$file" "$DEST/plugin/$file"
+done
+cp "$ROOT/plugin/i18n/en.json" "$DEST/plugin/i18n/en.json"
+install -m755 "$ROOT/build/cell" "$DEST/build/cell.new"
+mv "$DEST/build/cell.new" "$DEST/build/cell"
+cp "$ROOT/power/Model.js" "$DEST/Model.js"
+# The clone's entry point is at its root, unlike the marketplace entry point.
+python3 - "$ROOT/power/Panel.qml" "$DEST/Panel.qml" <<'PY'
+import pathlib, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+pathlib.Path(sys.argv[2]).write_text(source.replace('import "../plugin" as Cell', 'import "plugin" as Cell'))
+PY
+cp "$ROOT/LICENSE" "$DEST/LICENSE"
+printf 'Cell integration; source: %s\n' "$ROOT" > "$DEST/.cell-integrated"
+omarchy plugin validate "$DEST"
+if omarchy plugin list --json | jq -e 'any(.[]; .id == "local.cell" and .enabled)' >/dev/null; then
+  omarchy plugin disable local.cell
+fi
+if omarchy-hyprland-session-locked; then
+  printf 'Integration saved. Unlock, then run: omarchy restart shell\n' >&2
+  exit 2
+fi
+# A rescan alone can retain old QML while loading new catalogs.
+omarchy restart shell
+printf 'Battery insights integrated into %s. Backup: %s\n' "$ID" "$BACKUP"

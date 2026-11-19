@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+case "${1:-}" in
+  enable)
+    test -x "$ROOT/build/cell" || "$ROOT/bin/build"
+    "$ROOT/build/cell" status --json >/dev/null
+    mkdir -p "$HOME/.config/systemd/user" "$HOME/.local/share/cell/cell"
+    UNIT="$HOME/.config/systemd/user/cell.service"
+    if test -e "$UNIT"; then
+      printf 'Refusing to overwrite %s\n' "$UNIT" >&2
+      exit 1
+    fi
+    umask 077
+    printf '%s\n' '[Unit]' 'Description=Cell battery history collector' '' '[Service]' \
+      "ExecStart=\"$ROOT/build/cell\" collect --json" 'Restart=on-failure' 'RestartSec=30' \
+      'StandardOutput=null' 'StandardError=journal' 'UMask=0077' 'NoNewPrivileges=true' \
+      'ProtectSystem=strict' 'ProtectHome=read-only' 'ReadWritePaths=%h/.local/share/cell' \
+      'Environment=XDG_DATA_HOME=%h/.local/share' '' '[Install]' 'WantedBy=default.target' > "$UNIT"
+    systemctl --user daemon-reload
+    systemctl --user enable --now cell.service
+    ;;
+  disable) systemctl --user disable --now cell.service ;;
+  *) printf 'Usage: bin/record enable|disable\n' >&2; exit 1 ;;
+esac

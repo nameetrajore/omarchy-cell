@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+node "$ROOT/tests/plugin_test.cjs"
+omarchy plugin validate "$ROOT/plugin"
+TEST="$ROOT/build/plugin-smoke"
+mkdir -p "$TEST/Cell"
+cp -R "$ROOT/plugin/." "$TEST/Cell/"
+cp "$ROOT/build/cell" "$TEST/Cell/cell-backend"
+cp "$ROOT/tests/plugin-smoke.qml" "$TEST/shell.qml"
+ln -sfn /usr/share/omarchy/shell/Commons "$TEST/Commons"
+ln -sfn /usr/share/omarchy/shell/Ui "$TEST/Ui"
+trap 'rm -f "$TEST/Commons" "$TEST/Ui"' EXIT HUP INT TERM
+python3 - "$TEST/fixture.json" <<'PY'
+import json,sys,time,math
+now=int(time.time())
+battery=dict(charge=67,watts=12.4,health=91.2,cycles=182,hours=2.5,state='Discharging')
+report=dict(version=1,generatedAt=now,battery=battery,stale=False,
+    context=dict(ts=now,cpu=24.5,brightness=80,profile='balanced',apps=[dict(name='<img src="https://example.invalid/test">',cpu=9.2),dict(name='Example browser',cpu=7.3)]),
+    analysis=dict(status='ready',matches=8,baselineWatts=9.4,deltaWatts=3,current=dict(watts=12.4,end=now),cpuCorrelation=dict(available=True,r=.72,count=24),brightnessCorrelation=dict(available=True,r=.34,count=24),profiles=[dict(profile='balanced',watts=10.2,windows=24)]),
+    points=[dict(ts=now-(119-i)*30,watts=9+2*math.sin(i/9),charge=80-i*.11) for i in range(120)],
+    sessions=[dict(start=now-5400-i*86400,hours=1.1+i*.2,watts=10.2-i,energy=11.2+i*2) for i in range(5)])
+with open(sys.argv[1],'w') as f:json.dump(report,f)
+PY
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 \
+  timeout 15 quickshell -p "$TEST" > "$TEST/output.log" 2>&1
+if grep -E 'ReferenceError|TypeError|Binding loop|Failed to load|Expected token|Unable to assign' "$TEST/output.log"; then exit 1; fi
+printf 'Interactive plugin checks passed; previews: %s/{overview,compare,history,compact,empty}.png\n' "$TEST"

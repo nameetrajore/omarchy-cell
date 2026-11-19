@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+TEST="$ROOT/build/power-smoke"
+mkdir -p "$TEST/Power" "$TEST/plugin/i18n" "$TEST/build"
+cp "$ROOT/power/Panel.qml" "$ROOT/power/Model.js" "$TEST/Power/"
+for file in BatteryDetails.qml HistoryGraph.qml PlainText.qml Telemetry.qml Model.js; do
+  cp "$ROOT/plugin/$file" "$TEST/plugin/$file"
+done
+cp "$ROOT/plugin/i18n/en.json" "$TEST/plugin/i18n/en.json"
+cp "$ROOT/build/cell" "$TEST/build/cell"
+cp "$ROOT/tests/power-smoke.qml" "$TEST/shell.qml"
+ln -sfn /usr/share/omarchy/shell/Commons "$TEST/Commons"
+ln -sfn /usr/share/omarchy/shell/Ui "$TEST/Ui"
+trap 'rm -f "$TEST/Commons" "$TEST/Ui"' EXIT HUP INT TERM
+# PanelWindow needs the Wayland backend; the test never makes a window visible.
+QT_QPA_PLATFORM=wayland QT_FORCE_STDERR_LOGGING=1 timeout 15 quickshell -p "$TEST" > "$TEST/output.log" 2>&1
+if grep -E 'ReferenceError|TypeError|Binding loop|Failed to load|Expected token|Unable to assign|TEST FAILURE' "$TEST/output.log"; then exit 1; fi
+printf 'Integrated battery plugin loads successfully; no windows opened.\n'

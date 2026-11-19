@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "nameetrajore.cell",
+  "name": "Cell Battery Insights",
+  "version": "0.2.0",
+  "author": "Cell contributors (AI-assisted)",
+  "license": "MIT",
+  "description": "Battery history and comparisons in the power panel, with an optional local collector.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "power/Panel.qml"},
+  "omarchy": {"clonedFrom": "omarchy.power"},
+  "barWidget": {
+    "displayName": "Cell Battery Insights",
+    "description": "Battery status, power profiles, local history and matched comparisons.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  }
+}

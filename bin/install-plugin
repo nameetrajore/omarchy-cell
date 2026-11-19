@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+DEST="$HOME/.config/omarchy/plugins/local.cell"
+if test -e "$DEST"; then
+  printf 'Plugin already exists at %s; refusing to overwrite.\n' "$DEST" >&2
+  exit 1
+fi
+"$ROOT/bin/build"
+omarchy plugin validate "$ROOT/plugin"
+mkdir -p "$DEST"
+cp -R "$ROOT/plugin/." "$DEST/"
+install -m755 "$ROOT/build/cell" "$DEST/cell-backend"
+install -m644 "$ROOT/LICENSE" "$DEST/LICENSE"
+omarchy plugin validate "$DEST"
+BACKUPS="$HOME/.local/state/cell/backups"
+mkdir -p "$BACKUPS"
+if test -f "$HOME/.config/omarchy/shell.json"; then
+  cp -a "$HOME/.config/omarchy/shell.json" "$BACKUPS/shell-$(date +%Y%m%d-%H%M%S).json"
+fi
+omarchy-shell shell rescanPlugins
+# Registry discovery is asynchronous; don't race the enable call against it.
+ready=false
+for attempt in 1 2 3 4 5; do
+  if omarchy plugin list --json | jq -e 'any(.[]; .id == "local.cell")' >/dev/null; then ready=true; break; fi
+  sleep 1
+done
+if test "$ready" != true; then printf 'Cell was copied but the shell did not discover it.\n' >&2; exit 1; fi
+omarchy plugin enable local.cell --after meviusisback.hw-monitor

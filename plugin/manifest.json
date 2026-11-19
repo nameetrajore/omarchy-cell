@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "local.cell",
+  "name": "Cell Battery Insights",
+  "version": "0.2.0",
+  "author": "Cell contributors (AI-assisted)",
+  "license": "MIT",
+  "description": "Battery drain history, matched comparisons and workload clues. Uses the local Cell collector; no network access.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "Widget.qml"},
+  "barWidget": {
+    "displayName": "Cell Battery Insights",
+    "description": "Click for battery history and matched-window comparisons. CPU activity is not application wattage.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  }
+}

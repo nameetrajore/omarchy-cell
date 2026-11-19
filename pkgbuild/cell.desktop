@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cell
+Name[da]=Cell
+Comment=Understand your battery health and power consumption
+Comment[da]=Forstå dit batteris tilstand og strømforbrug
+Exec=cell open
+Icon=cell
+Terminal=false
+Categories=System;Monitor;
+StartupWMClass=cell
